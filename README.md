@@ -1,11 +1,30 @@
-<div align="center">
+# Food Redistribution Platform
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A responsive web platform that connects food donors, NGOs and receiving organizations, volunteers, and administrators to reduce food waste and coordinate pickup and delivery.
 
-  <h1>Built with AI Studio</h2>
+## Technology stack
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- React + Vite + TypeScript
+- Express + tRPC
+- Drizzle ORM with the managed MySQL-compatible database
+- Manus OAuth authentication
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Main modules
 
-</div>
+- Home page with platform information, contact access, and real impact statistics
+- Donor dashboard for adding food donations and tracking donation status
+- NGO dashboard for viewing and accepting available donations
+- Volunteer dashboard for pickup and delivery coordination
+- Administrator dashboard for user, donation, delivery, and report monitoring
+- Notifications, delivery history, issue reporting, and database-backed status updates
+
+## Development
+
+```bash
+pnpm dev
+pnpm check
+pnpm test
+pnpm db:migrate
+```
+
+The managed environment supplies database and authentication values. Never commit real credentials; use `.env.example` only as a placeholder reference.

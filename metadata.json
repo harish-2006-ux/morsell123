@@ -1,0 +1,8 @@
+{
+  "name": "FoodShare",
+  "description": "A food redistribution platform connecting surplus food donors, receiving organizations, and volunteer couriers to rescue food before its expiry window.",
+  "prompt": "Food redistribution platform to share surplus food and support the community",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

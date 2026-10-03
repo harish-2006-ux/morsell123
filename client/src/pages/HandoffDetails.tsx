@@ -1,0 +1,21 @@
+import { ArrowLeft, ArrowRight, Check, Clock3, PackageCheck, ShieldAlert } from "lucide-react";
+import { Link, useParams } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+
+const steps = [{ key: "accepted", label: "Accepted" }, { key: "handoff_arranged", label: "Pickup arranged" }, { key: "picked_up", label: "Picked up" }, { key: "on_the_way", label: "On the way" }, { key: "delivered", label: "Delivered" }, { key: "completed", label: "Delivery recorded" }];
+const next: Record<string, { status: "handoff_arranged" | "picked_up" | "on_the_way" | "delivered" | "completed"; label: string } | undefined> = { accepted: { status: "handoff_arranged", label: "Arrange pickup" }, handoff_arranged: { status: "picked_up", label: "Confirm pickup" }, picked_up: { status: "on_the_way", label: "Mark on the way" }, on_the_way: { status: "delivered", label: "Confirm delivery" }, delivered: { status: "completed", label: "Record delivery" } };
+
+export default function HandoffDetails() {
+  const { id } = useParams<{ id: string }>();
+  const auth = useAuth();
+  const query = trpc.handoff.get.useQuery({ id: Number(id) }, { enabled: Boolean(auth.user) });
+  const advance = trpc.handoff.advance.useMutation({ onSuccess: () => query.refetch() });
+  if (!auth.user) return <div className="center-page"><div className="login-card"><span className="empty-orbit"><PackageCheck size={21} /></span><h1>Sign in to see this delivery</h1><p>Delivery details are shared only with the people involved.</p><Link href="/app" className="button button-dark button-large">Open dashboard <ArrowRight size={17} /></Link></div></div>;
+  if (query.isLoading) return <div className="center-page"><div className="loading-spinner" /></div>;
+  const handoff = query.data;
+  if (!handoff) return <div className="center-page"><div className="login-card"><h1>Delivery not found</h1><p>This delivery may not be available to your account.</p><Link href="/app" className="button button-dark">Back to dashboard</Link></div></div>;
+  const currentIndex = Math.max(0, steps.findIndex(step => step.key === handoff.status));
+  const nextAction = next[handoff.status];
+  return <div className="app-page"><header className="app-header"><div className="shell app-header-inner"><Link href="/app" className="back-link"><ArrowLeft size={16} /> Dashboard</Link><span className="form-header-label"><PackageCheck size={17} /> Delivery tracking</span></div></header><main className="shell handoff-main"><div className="handoff-heading"><div><p className="eyebrow">Delivery tracking</p><h1>One clear next step.</h1><p>Every update is saved so donors, NGOs, and volunteers see what happened.</p></div><span className="handoff-status"><Clock3 size={15} /> {handoff.status.replaceAll("_", " ")}</span></div><section className="loop-progress">{steps.map((step, index) => <div className={index <= currentIndex ? "progress-step done" : "progress-step"} key={step.key}><span>{index < currentIndex ? <Check size={15} /> : index === currentIndex ? <span className="progress-current" /> : index + 1}</span><small>{step.label}</small></div>)}</section><div className="handoff-action-grid"><div className="next-action-card"><span className="next-card-kicker">Next action</span><h2>{nextAction ? nextAction.label : handoff.status === "completed" ? "This delivery is complete" : "Keep the delivery updated"}</h2><p>{handoff.status === "completed" ? "A delivery record has been created for this donation." : "Use the action only when this step has actually happened."}</p>{nextAction && <button className="button button-apricot button-large" disabled={advance.isPending} onClick={() => advance.mutate({ id: handoff.id, nextStatus: nextAction.status })}>{advance.isPending ? "Saving update…" : nextAction.label}<ArrowRight size={17} /></button>}</div><div className="handoff-note-card"><ShieldAlert size={20} /><div><strong>Something changed?</strong><p>Report an issue instead of forcing the next step. The delivery can be reviewed and updated honestly.</p><button className="button button-outline button-small" onClick={() => advance.mutate({ id: handoff.id, nextStatus: "issue_reported", note: "Issue reported from delivery page." })}>Report an issue</button></div></div></div>{advance.error && <p className="form-error">{advance.error.message}</p>}</main></div>;
+}
