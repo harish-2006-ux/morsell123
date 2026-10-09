@@ -23,6 +23,48 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+export async function checkDatabaseConnection(): Promise<{
+  connected: boolean;
+  provider: "postgres" | "in-memory";
+  configured: boolean;
+  host?: string;
+  error?: string;
+}> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    return {
+      connected: false,
+      configured: false,
+      provider: "in-memory",
+      error: "DATABASE_URL environment variable is not set.",
+    };
+  }
+
+  try {
+    const client = postgres(dbUrl, { prepare: false, timeout: 5 });
+    await client`SELECT 1`;
+    let host = "configured-database";
+    try {
+      const parsed = new URL(dbUrl);
+      host = parsed.hostname;
+    } catch {}
+    await client.end();
+    return {
+      connected: true,
+      configured: true,
+      provider: "postgres",
+      host,
+    };
+  } catch (err: any) {
+    return {
+      connected: false,
+      configured: true,
+      provider: "in-memory",
+      error: err?.message || "Failed to connect to database host.",
+    };
+  }
+}
+
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbTested = false;
 
@@ -412,19 +454,179 @@ export async function getUserByOpenId(openId: string): Promise<User | undefined>
   return memUsers.find(u => u.openId === openId);
 }
 
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const result = await db.select().from(users).where(eq(users.email, email.trim())).limit(1);
+      return result[0];
+    }
+  } catch (error) {
+    console.warn("[Database] getUserByEmail failed on DB, using memory:", error);
+    _db = null;
+  }
+  return memUsers.find(u => u.email?.toLowerCase() === email.trim().toLowerCase());
+}
+
+export async function getUserByName(name: string): Promise<User | undefined> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const result = await db.select().from(users).where(eq(users.name, name.trim())).limit(1);
+      return result[0];
+    }
+  } catch (error) {
+    console.warn("[Database] getUserByName failed on DB, using memory:", error);
+    _db = null;
+  }
+  return memUsers.find(u => u.name?.toLowerCase() === name.trim().toLowerCase());
+}
+
+export async function updateUserName(userId: number, newName: string): Promise<void> {
+  const cleanName = newName.trim();
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.update(users).set({ name: cleanName, updatedAt: new Date() }).where(eq(users.id, userId));
+      return;
+    }
+  } catch (error) {
+    console.warn("[Database] updateUserName failed on DB, using memory:", error);
+    _db = null;
+  }
+  const u = memUsers.find(user => user.id === userId);
+  if (u) {
+    u.name = cleanName;
+    u.updatedAt = new Date();
+  }
+}
+
+export async function updateProfileDisplayName(userId: number, displayName: string): Promise<void> {
+  const cleanName = displayName.trim();
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.update(profiles).set({ displayName: cleanName, updatedAt: new Date() }).where(eq(profiles.userId, userId));
+      return;
+    }
+  } catch (error) {
+    console.warn("[Database] updateProfileDisplayName failed on DB, using memory:", error);
+    _db = null;
+  }
+  memProfiles.forEach(p => {
+    if (p.userId === userId) {
+      p.displayName = cleanName;
+      p.updatedAt = new Date();
+    }
+  });
+}
+
+export async function updateProfileFull(
+  userId: number,
+  details: {
+    displayName: string;
+    phone?: string | null;
+    serviceArea?: string | null;
+    capacity?: number | null;
+    availability?: string | null;
+    transportMode?: string | null;
+  }
+): Promise<void> {
+  const cleanName = details.displayName.trim();
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.update(profiles).set({
+        displayName: cleanName,
+        phone: details.phone !== undefined ? details.phone : null,
+        serviceArea: details.serviceArea !== undefined ? details.serviceArea : null,
+        capacity: details.capacity !== undefined ? details.capacity : null,
+        availability: details.availability !== undefined ? details.availability : null,
+        transportMode: details.transportMode !== undefined ? details.transportMode : null,
+        updatedAt: new Date(),
+      }).where(eq(profiles.userId, userId));
+      return;
+    }
+  } catch (error) {
+    console.warn("[Database] updateProfileFull failed on DB, using memory:", error);
+    _db = null;
+  }
+  memProfiles.forEach(p => {
+    if (p.userId === userId) {
+      p.displayName = cleanName;
+      if (details.phone !== undefined) p.phone = details.phone ?? null;
+      if (details.serviceArea !== undefined) p.serviceArea = details.serviceArea ?? null;
+      if (details.capacity !== undefined) p.capacity = details.capacity ?? null;
+      if (details.availability !== undefined) p.availability = details.availability ?? null;
+      if (details.transportMode !== undefined) p.transportMode = details.transportMode ?? null;
+      p.updatedAt = new Date();
+    }
+  });
+}
+
+export async function setActiveRoleForUser(userId: number, role: Profile["role"]): Promise<Profile> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const existing = await db.select().from(profiles).where(and(eq(profiles.userId, userId), eq(profiles.role, role))).limit(1);
+      if (existing.length > 0) {
+        await db.update(profiles).set({ updatedAt: new Date() }).where(eq(profiles.id, existing[0].id));
+        return { ...existing[0], updatedAt: new Date() };
+      }
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const displayName = user[0]?.name || "FoodShare Member";
+      const newProfiles = await db.insert(profiles).values({
+        userId,
+        role,
+        displayName,
+      }).returning();
+      return newProfiles[0];
+    }
+  } catch (error) {
+    console.warn("[Database] setActiveRoleForUser failed on DB, using memory:", error);
+    _db = null;
+  }
+
+  // In memory fallback
+  const existing = memProfiles.find(p => p.userId === userId && p.role === role);
+  if (existing) {
+    existing.updatedAt = new Date();
+    return existing;
+  }
+  const u = memUsers.find(user => user.id === userId);
+  const displayName = u?.name || "FoodShare Member";
+  const newProfile: Profile = {
+    id: nextProfileId++,
+    userId,
+    role,
+    displayName,
+    phone: null,
+    serviceArea: null,
+    capacity: null,
+    availability: null,
+    transportMode: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  memProfiles.push(newProfile);
+  return newProfile;
+}
+
 export async function getProfileForUser(userId: number, role?: Profile["role"]): Promise<Profile | undefined> {
   try {
     const db = await getDb();
     if (db) {
       const conditions = role ? and(eq(profiles.userId, userId), eq(profiles.role, role)) : eq(profiles.userId, userId);
-      const result = await db.select().from(profiles).where(conditions).limit(1);
+      const result = await db.select().from(profiles).where(conditions).orderBy(desc(profiles.updatedAt)).limit(1);
       return result[0];
     }
   } catch (error) {
     console.warn("[Database] getProfileForUser failed on DB, using memory:", error);
     _db = null;
   }
-  return memProfiles.find(p => p.userId === userId && (!role || p.role === role));
+  const matching = memProfiles.filter(p => p.userId === userId && (!role || p.role === role));
+  if (matching.length === 0) return undefined;
+  return matching.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
 }
 
 export async function createProfile(profile: InsertProfile): Promise<number> {

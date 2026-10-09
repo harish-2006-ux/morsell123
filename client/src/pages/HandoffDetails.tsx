@@ -11,7 +11,7 @@ export default function HandoffDetails() {
   const auth = useAuth();
   const query = trpc.handoff.get.useQuery({ id: Number(id) }, { enabled: Boolean(auth.user) });
   const advance = trpc.handoff.advance.useMutation({ onSuccess: () => query.refetch() });
-  if (!auth.user) return <div className="center-page"><div className="login-card"><span className="empty-orbit"><PackageCheck size={21} /></span><h1>Sign in to see this delivery</h1><p>Delivery details are shared only with the people involved.</p><Link href="/app" className="button button-dark button-large">Open dashboard <ArrowRight size={17} /></Link></div></div>;
+  if (!auth.user) return <div className="center-page"><div className="login-card"><span className="empty-orbit"><PackageCheck size={21} /></span><h1>Sign in to see this delivery</h1><p>Delivery details are shared only with the people involved.</p><Link href={`/login?returnUrl=/handoffs/${id}`} className="button button-dark button-large">Sign in to view <ArrowRight size={17} /></Link></div></div>;
   if (query.isLoading) return <div className="center-page"><div className="loading-spinner" /></div>;
   const handoff = query.data;
   if (!handoff) return <div className="center-page"><div className="login-card"><h1>Delivery not found</h1><p>This delivery may not be available to your account.</p><Link href="/app" className="button button-dark">Back to dashboard</Link></div></div>;

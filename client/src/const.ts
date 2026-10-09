@@ -18,7 +18,7 @@ export const startLogin = (role?: string) => {
   if (!oauthPortalUrl || !appId) {
     const returnUrl = encodeURIComponent(window.location.pathname === "/" ? "/app" : window.location.pathname);
     const roleQuery = role ? `&role=${encodeURIComponent(role)}` : "";
-    window.location.href = `/api/auth/dev-login?returnUrl=${returnUrl}${roleQuery}`;
+    window.location.href = `/login?returnUrl=${returnUrl}${roleQuery}`;
     return;
   }
   const redirectUri = `${window.location.origin}/api/oauth/callback`;

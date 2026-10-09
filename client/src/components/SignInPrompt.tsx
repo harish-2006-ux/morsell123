@@ -56,9 +56,14 @@ export default function SignInPrompt({
             <p className="eyebrow">Welcome back</p>
             <h2>{title}</h2>
             <p className="signin-description">{description}</p>
-            <button className="button button-dark button-large full-width signin-button" onClick={() => startLogin()}>
+            <Link href="/login" className="button button-dark button-large full-width signin-button">
               Sign in to continue <ArrowRight size={17} />
-            </button>
+            </Link>
+            <div style={{ marginTop: "14px", textAlign: "center" }}>
+              <Link href="/register" className="inline-link" style={{ fontSize: "13px" }}>
+                New here? Register a FoodShare account <ArrowRight size={14} />
+              </Link>
+            </div>
             <p className="signin-note"><ShieldCheck size={15} /> Your account keeps your activity connected and private.</p>
             <Link href="/" className="signin-back">Back to FoodShare <ArrowRight size={14} /></Link>
           </div>

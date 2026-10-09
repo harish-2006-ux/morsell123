@@ -7,18 +7,24 @@ import { COOKIE_NAME } from "@shared/const";
 import {
   acceptOffer,
   advanceHandoff,
+  checkDatabaseConnection,
   createProfile,
   createRescueOffer,
   getHandoff,
   getImpactSummary,
   getProfileForUser,
   getRescueOffer,
+  getUserByOpenId,
   listActiveHubs,
   listAvailableOffers,
   listNotifications,
   listOffersForDonor,
   markNotificationRead,
   requestOffer,
+  setActiveRoleForUser,
+  updateProfileDisplayName,
+  updateProfileFull,
+  updateUserName,
 } from "./db";
 import type { Profile, RescueOffer } from "../drizzle/schema";
 
@@ -79,7 +85,11 @@ const allowedTransitions: Record<RescueOffer["status"], RescueOffer["status"][]>
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) return null;
+      const freshUser = await getUserByOpenId(ctx.user.openId);
+      return freshUser || ctx.user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -91,10 +101,39 @@ export const appRouter = router({
     hubs: publicProcedure.query(() => listActiveHubs()),
     availableOffers: publicProcedure.query(() => listAvailableOffers()),
     offer: publicProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getRescueOffer(input.id)),
+    dbStatus: publicProcedure.query(async () => checkDatabaseConnection()),
   }),
   profile: router({
     mine: protectedProcedure.query(({ ctx }) => getProfileForUser(ctx.user.id)),
     save: protectedProcedure.input(profileInput).mutation(({ ctx, input }) => createProfile({ userId: ctx.user.id, ...input })),
+    updateName: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(120) })).mutation(async ({ ctx, input }) => {
+      await updateUserName(ctx.user.id, input.name);
+      await updateProfileDisplayName(ctx.user.id, input.name);
+      return { success: true, name: input.name };
+    }),
+    updateDetails: protectedProcedure.input(z.object({
+      name: z.string().trim().min(2).max(120),
+      phone: z.string().trim().max(40).optional().nullable(),
+      serviceArea: z.string().trim().max(160).optional().nullable(),
+      capacity: z.number().int().positive().max(100000).optional().nullable(),
+      availability: z.string().trim().max(160).optional().nullable(),
+      transportMode: z.string().trim().max(40).optional().nullable(),
+    })).mutation(async ({ ctx, input }) => {
+      await updateUserName(ctx.user.id, input.name);
+      await updateProfileFull(ctx.user.id, {
+        displayName: input.name,
+        phone: input.phone || null,
+        serviceArea: input.serviceArea || null,
+        capacity: input.capacity || null,
+        availability: input.availability || null,
+        transportMode: input.transportMode || null,
+      });
+      return { success: true, name: input.name };
+    }),
+    switchRole: protectedProcedure.input(z.object({ role: roleSchema })).mutation(async ({ ctx, input }) => {
+      const updated = await setActiveRoleForUser(ctx.user.id, input.role);
+      return { success: true, profile: updated };
+    }),
   }),
   donor: router({
     offers: protectedProcedure.query(({ ctx }) => requireRole(ctx.user.id, "donor").then(profile => listOffersForDonor(profile.id))),

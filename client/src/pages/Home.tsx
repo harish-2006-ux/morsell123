@@ -25,8 +25,8 @@ function PublicHeader() {
           <a href="#impact" onClick={() => setOpen(false)}>Statistics</a>
         </nav>
         <div className="header-actions">
-          <button className="text-button" onClick={() => startLogin()}>Sign in</button>
-          <button className="button button-dark button-small" onClick={() => startLogin()}>Register / Sign in <ArrowRight size={15} /></button>
+          <Link href="/login" className="text-button">Sign in</Link>
+          <Link href="/register" className="button button-dark button-small">Register <ArrowRight size={15} /></Link>
           <button className="icon-button mobile-menu" onClick={() => setOpen(value => !value)} aria-label="Open navigation">
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -58,7 +58,7 @@ export default function Home() {
               <h1>Share surplus food. <em>Support your community.</em></h1>
               <p className="hero-lede">FoodShare helps surplus food find a nearby next table before its expiry time.</p>
               <div className="hero-actions">
-                <button className="button button-apricot button-large" onClick={() => startLogin()}>Donate food <ArrowRight size={18} /></button>
+                <Link href="/register" className="button button-apricot button-large">Donate food <ArrowRight size={18} /></Link>
                 <Link href="/how-it-works" className="button button-ghost button-large">See how it works <MoveRight size={18} /></Link>
               </div>
               <div className="hero-note"><ShieldCheck size={16} /> Every delivery is tracked. Every status is recorded.</div>
@@ -107,9 +107,9 @@ export default function Home() {
           <div className="shell">
             <div className="center-heading"><p className="eyebrow">There is a place for you here</p><h2>One platform. <em>Many ways to care.</em></h2><p>Choose the part that feels natural. FoodShare keeps delivery steps clear for everyone.</p></div>
             <div className="role-grid">
-              <button className="role-card role-apricot" onClick={() => startLogin("donor")}><span className="role-icon"><HandHeart size={23} /></span><span className="role-title">Donate food</span><span>Turn today's extra into someone else's next meal.</span><span className="role-arrow"><ArrowRight size={18} /></span></button>
-              <button className="role-card role-blue" onClick={() => startLogin("organization")}><span className="role-icon"><UsersRound size={23} /></span><span className="role-title">NGO / Receive donations</span><span>Find offers that fit your kitchen, community, and moment.</span><span className="role-arrow"><ArrowRight size={18} /></span></button>
-              <button className="role-card role-green" onClick={() => startLogin("volunteer")}><span className="role-icon"><MapPin size={23} /></span><span className="role-title">Volunteer delivery</span><span>Help food travel the last mile with care.</span><span className="role-arrow"><ArrowRight size={18} /></span></button>
+              <Link href="/register?role=donor" className="role-card role-apricot"><span className="role-icon"><HandHeart size={23} /></span><span className="role-title">Donate food</span><span>Turn today's extra into someone else's next meal.</span><span className="role-arrow"><ArrowRight size={18} /></span></Link>
+              <Link href="/register?role=organization" className="role-card role-blue"><span className="role-icon"><UsersRound size={23} /></span><span className="role-title">NGO / Receive donations</span><span>Find offers that fit your kitchen, community, and moment.</span><span className="role-arrow"><ArrowRight size={18} /></span></Link>
+              <Link href="/register?role=volunteer" className="role-card role-green"><span className="role-icon"><MapPin size={23} /></span><span className="role-title">Volunteer delivery</span><span>Help food travel the last mile with care.</span><span className="role-arrow"><ArrowRight size={18} /></span></Link>
             </div>
           </div>
         </section>
@@ -123,7 +123,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="closing-section"><div className="shell closing-inner"><div><p className="eyebrow eyebrow-light">Ready when you are</p><h2>Make the next moment <em>count.</em></h2></div><button className="button button-apricot button-large" onClick={() => startLogin()}>Join FoodShare <ArrowRight size={18} /></button></div></section>
+        <section className="closing-section"><div className="shell closing-inner"><div><p className="eyebrow eyebrow-light">Ready when you are</p><h2>Make the next moment <em>count.</em></h2></div><Link href="/register" className="button button-apricot button-large">Join FoodShare <ArrowRight size={18} /></Link></div></section>
       </main>
       <footer className="site-footer"><div className="shell footer-inner"><Logo /><span>Share surplus food. Support your community.</span><div><Link href="/how-it-works">How it works</Link><a href="mailto:support@foodshare.local">Contact</a><span>© 2026 FoodShare</span></div></div></footer>
     </div>

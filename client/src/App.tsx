@@ -10,11 +10,16 @@ import Workspace from "./pages/Workspace";
 import ShareFood from "./pages/ShareFood";
 import OfferDetails from "./pages/OfferDetails";
 import HandoffDetails from "./pages/HandoffDetails";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/register" component={Register} />
+      <Route path="/login" component={Login} />
+      <Route path="/signin" component={Login} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route path="/app" component={Workspace} />
       <Route path="/share" component={ShareFood} />
