@@ -1,9 +1,9 @@
 import { ArrowRight, Bell, CheckCircle2, Clock3, HeartHandshake, LogOut, PackagePlus, RefreshCw, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import SignInPrompt from "@/components/SignInPrompt";
 
 const roleCopy = { donor: { title: "Donor", copy: "Add surplus food and track its donation status." }, organization: { title: "NGO / Organization", copy: "View available food and coordinate acceptance." }, volunteer: { title: "Volunteer", copy: "Manage pickup, delivery, and status updates." } } as const;
 
@@ -67,6 +67,6 @@ export default function Workspace() {
   const profileQuery = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(auth.user) });
   const [, navigate] = useLocation();
   if (auth.loading) return <div className="center-page"><div className="loading-spinner" /></div>;
-  if (!auth.user) return <div className="center-page"><div className="login-card"><span className="empty-orbit"><Bell size={21} /></span><h1>Open your dashboard</h1><p>Sign in to share food, receive offers, or carry a delivery.</p><button className="button button-dark button-large" onClick={() => startLogin()}>Sign in to continue <ArrowRight size={17} /></button><Link href="/" className="text-link">Back home</Link></div></div>;
+  if (!auth.user) return <SignInPrompt title="Open your dashboard." description="Sign in to share food, receive offers, or carry a delivery through to its destination." />;
   return <div className="app-page"><BrandBar user={auth.user} onLogout={() => auth.logout().then(() => navigate("/"))} /><main className="shell app-main">{auth.user.role === "admin" ? <AdminWorkspace /> : profileQuery.isLoading ? <div className="center-page"><div className="loading-spinner" /></div> : !profileQuery.data ? <RoleSetup onSaved={() => profileQuery.refetch()} /> : profileQuery.data.role === "donor" ? <DonorWorkspace /> : profileQuery.data.role === "organization" ? <OrganizationWorkspace /> : <VolunteerWorkspace />}</main></div>;
 }

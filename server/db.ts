@@ -1,5 +1,7 @@
 import { and, desc, eq, gt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { sql } from "drizzle-orm";
 import {
   InsertProfile,
   InsertRescueOffer,
@@ -43,10 +45,11 @@ export async function getDb() {
   }
 
   try {
-    const client = drizzle(dbUrl);
+    const client = postgres(dbUrl, { prepare: false });
+    const db = drizzle(client);
     // quick health-check to verify real connection
-    await client.execute("SELECT 1");
-    _db = client;
+    await db.execute(sql`SELECT 1`);
+    _db = db;
     console.log("[Database] Connected successfully to database.");
   } catch (error) {
     console.warn("[Database] Connection failed, using in-memory store fallback:", error);
@@ -361,7 +364,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
         values.role = "admin";
         updateSet.role = "admin";
       }
-      await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+      await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
       return;
     }
   } catch (error) {
@@ -428,8 +431,8 @@ export async function createProfile(profile: InsertProfile): Promise<number> {
   try {
     const db = await getDb();
     if (db) {
-      const result = await db.insert(profiles).values(profile);
-      return result[0]?.insertId as number;
+      const result = await db.insert(profiles).values(profile).returning({ id: profiles.id });
+      return result[0]?.id as number;
     }
   } catch (error) {
     console.warn("[Database] createProfile failed on DB, using memory:", error);
@@ -484,8 +487,8 @@ export async function createRescueOffer(offer: InsertRescueOffer): Promise<numbe
   try {
     const db = await getDb();
     if (db) {
-      const result = await db.insert(rescueOffers).values(offer);
-      return result[0]?.insertId as number;
+      const result = await db.insert(rescueOffers).values(offer).returning({ id: rescueOffers.id });
+      return result[0]?.id as number;
     }
   } catch (error) {
     console.warn("[Database] createRescueOffer failed on DB, using memory:", error);
@@ -608,7 +611,8 @@ export async function requestOffer(offerId: number, organizationProfileId: numbe
     if (db) {
       const result = await db
         .insert(offerRequests)
-        .values({ offerId, organizationProfileId, note, status: "pending" });
+        .values({ offerId, organizationProfileId, note, status: "pending" })
+        .returning({ id: offerRequests.id });
       await db
         .update(rescueOffers)
         .set({ status: "requested", updatedAt: new Date() })
@@ -622,7 +626,7 @@ export async function requestOffer(offerId: number, organizationProfileId: numbe
           body: "A receiving organization has requested this food. Review the next handoff step when you are ready.",
         });
       }
-      return result[0]?.insertId as number;
+      return result[0]?.id as number;
     }
   } catch (error) {
     console.warn("[Database] requestOffer failed on DB, using memory:", error);
@@ -682,7 +686,8 @@ export async function acceptOffer(
           collectionMode,
           status: "accepted",
           assignedAt: collectionMode === "self" ? new Date() : null,
-        });
+        })
+        .returning({ id: handoffs.id });
       await db.update(rescueOffers).set({ status: "accepted", updatedAt: new Date() }).where(eq(rescueOffers.id, offerId));
       const offer = await getRescueOffer(offerId);
       if (offer) {
@@ -696,7 +701,7 @@ export async function acceptOffer(
               : "A handoff is being arranged for your food.",
         });
       }
-      return handoff[0]?.insertId as number;
+      return handoff[0]?.id as number;
     }
   } catch (error) {
     console.warn("[Database] acceptOffer failed on DB, using memory:", error);
